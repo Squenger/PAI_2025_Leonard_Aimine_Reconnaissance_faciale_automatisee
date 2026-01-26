@@ -3,7 +3,7 @@
 import sys
 import click
 from PyQt6.QtWidgets import QApplication, QStyleFactory
-from .gui import FaceRecoApp
+from .interface import FaceRecoApp
 
 
 @click.command()

@@ -29,8 +29,11 @@ class WorkerThread(QThread):
     """
     Gère l'exécution des tâches lourdes en arrière-plan pour éviter de figer l'interface.
     """
-    progress_signal = pyqtSignal(str)  # Émet des messages de log vers l'UI
-    finished_signal = pyqtSignal()     # Émis à la fin de la tâche
+    progress_signal = pyqtSignal(str)
+    """Signal émettant des messages de log (str) vers l'interface utilisateur."""
+    
+    finished_signal = pyqtSignal()
+    """Signal émis lorsque la tâche en arrière-plan est terminée."""
 
     def __init__(self, task_function, *args, **kwargs):
         super().__init__()

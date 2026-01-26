@@ -65,6 +65,28 @@ You can also use the `Lancer_Interface.command` script to launch the application
 You can lunch the application in dist folder. It is not working on macos.
 
 
+# Tests
+
+```console
+$ pytest tests/test_my_project.py
+```
+
+Initialization: Ensures the manager starts with correct default paths and parameters.
+
+Model Downloader: Mocks the verification and retrieval of ONNX models (using unittest.mock).
+
+Model Loading: Validates the initialization of OpenCV’s YuNet detector and SFace recognizer.
+
+Encoding Management: Tests successful signature loading and handles missing encoding files.
+
+Renaming Logic: Verifies file renaming accuracy and collision handling (e.g., auto-incrementing to _2, _3).
+
+Training (train_faces): Simulates directory scanning, face detection, and feature extraction.
+
+Directory Processing (process_directory): Tests face identification in unknown image folders and automated renaming based on similarity thresholds.
+
+
+
 ## License
 
 Distributed under the terms of the [MIT license][license],
