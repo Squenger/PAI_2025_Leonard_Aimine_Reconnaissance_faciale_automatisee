@@ -12,7 +12,7 @@ class FaceRecognizerManager:
     d'images dans un répertoire donné.
     """
 
-    def __init__(self, model_dir="models_onnx", encoding_file="visages_connus.pkl", threshold=0.4):
+    def __init__(self, model_dir=None, encoding_file="visages_connus.pkl", threshold=0.4):
         """
         Initialise le gestionnaire de reconnaissance faciale.
         
@@ -20,6 +20,10 @@ class FaceRecognizerManager:
         :param encoding_file: Chemin du fichier pickle stockant les signatures faciales.
         :param threshold: Seuil de similarité cosinus pour la validation d'une correspondance.
         """
+        if model_dir is None:
+            # Chemin par défaut vers le dossier des modèles dans le package
+            model_dir = os.path.join(os.path.dirname(__file__), "models_onnx")
+            
         self.model_dir = model_dir
         self.encoding_file = encoding_file
         self.threshold = threshold

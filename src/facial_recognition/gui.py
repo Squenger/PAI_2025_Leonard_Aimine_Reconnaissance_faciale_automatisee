@@ -6,21 +6,24 @@ if sys.platform == 'darwin':
     try:
         import PyQt6
         plugin_path = os.path.join(os.path.dirname(PyQt6.__file__), 'Qt6', 'plugins')
-        os.environ['QT_PLUGIN_PATH'] = plugin_path
-        os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = os.path.join(plugin_path, 'platforms')
-        os.environ['QT_MAC_WANTS_LAYER'] = '1' 
+        if os.path.exists(plugin_path):
+            os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
     except ImportError:
         pass
 # ---------------------------------------
 
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QLabel, QLineEdit, QPushButton, 
-                             QTextEdit, QProgressBar, QFileDialog, QGroupBox, 
-                             QDoubleSpinBox, QMessageBox, QStyleFactory)
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QPushButton, QLabel, QLineEdit, QFileDialog, QTextEdit,
+    QProgressBar, QGroupBox, QStyleFactory, QDoubleSpinBox, QMessageBox
+)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
-# Importation du gestionnaire de reconnaissance (FaceRecognizerManager.py doit être dans le même répertoire)
-from FaceRecognizerManager import FaceRecognizerManager
+# Importation du gestionnaire de reconnaissance
+try:
+    from .manager import FaceRecognizerManager
+except ImportError:
+    from manager import FaceRecognizerManager
 
 class WorkerThread(QThread):
     """
@@ -58,7 +61,7 @@ class FaceRecoApp(QMainWindow):
         # Initialisation du gestionnaire avec les chemins par défaut
         self.base_dir = os.getcwd()
         self.manager = FaceRecognizerManager(
-            model_dir=os.path.join(self.base_dir, "models_onnx"),
+            model_dir=None,  # Utilise le dossier dans le package par défaut
             encoding_file=os.path.join(self.base_dir, "encodings_data", "visages_connus.pkl")
         )
 
@@ -257,7 +260,7 @@ class FaceRecoApp(QMainWindow):
             QPushButton:hover { background-color: #2980b9; }
             QPushButton:disabled { background-color: #bdc3c7; }
             QLineEdit { padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
-            QTextEdit { background-color: white; color: black; font-family: Consolas, 'Courier New'; }
+            QTextEdit { background-color: white; color: black; font-family: 'Consolas', 'Courier New', monospace; }
             QToolTip { color: white; background-color: #333; border: 1px solid #333; }
         """)
 

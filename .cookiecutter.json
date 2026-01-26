@@ -1,0 +1,16 @@
+{
+  "_checkout": null,
+  "_output_dir": "/tmp/template_gen_v2",
+  "_repo_dir": "/Users/aiminemeddeb/.cookiecutters/cookiecutter-uv-hypermodern-python",
+  "_template": "https://github.com/bosd/cookiecutter-uv-hypermodern-python",
+  "author": "Aimine Meddeb",
+  "copyright_year": "2026",
+  "development_status": "Development Status :: 1 - Planning",
+  "email": "aimine.meddeb@gmail.com",
+  "friendly_name": "Facial Recognition",
+  "github_user": "bosd",
+  "license": "MIT",
+  "package_name": "facial_recognition",
+  "project_name": "facial-recognition",
+  "version": "0.0.0"
+}
