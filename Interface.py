@@ -1,7 +1,7 @@
 import sys
 import os
 
-# --- Correction for MACOS / ANACONDA --- useless on windows and linux
+# --- Correction pour MACOS / ANACONDA ---
 if sys.platform == 'darwin':
     try:
         import PyQt6
@@ -11,7 +11,7 @@ if sys.platform == 'darwin':
         os.environ['QT_MAC_WANTS_LAYER'] = '1' 
     except ImportError:
         pass
-# ----------------------------------
+# ---------------------------------------
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QLineEdit, QPushButton, 
@@ -19,15 +19,15 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QDoubleSpinBox, QMessageBox, QStyleFactory)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
-# Import all functions from FaceRecognizerManager (FaceRecognizerManager.py must be in the same directory)
+# Importation du gestionnaire de reconnaissance (FaceRecognizerManager.py doit être dans le même répertoire)
 from FaceRecognizerManager import FaceRecognizerManager
 
 class WorkerThread(QThread):
     """
-    Handles background execution of long-running tasks to prevent UI freezing.
+    Gère l'exécution des tâches lourdes en arrière-plan pour éviter de figer l'interface.
     """
-    progress_signal = pyqtSignal(str)  # Emits log messages to the UI
-    finished_signal = pyqtSignal()     # Emits upon task completion
+    progress_signal = pyqtSignal(str)  # Émet des messages de log vers l'UI
+    finished_signal = pyqtSignal()     # Émis à la fin de la tâche
 
     def __init__(self, task_function, *args, **kwargs):
         super().__init__()
@@ -36,8 +36,8 @@ class WorkerThread(QThread):
         self.kwargs = kwargs
 
     def run(self):
-        # Inject signal.emit as a callback for the logic function
-        # allowing face_logic.py to communicate with the UI.
+        # Injecte signal.emit comme fonction de rappel (callback) pour la logique métier,
+        # permettant à FaceRecognizerManager de communiquer avec l'interface.
         try:
             self.task_function(*self.args, **self.kwargs, progress_callback=self.progress_signal.emit)
         except Exception as e:
@@ -46,13 +46,16 @@ class WorkerThread(QThread):
             self.finished_signal.emit()
 
 class FaceRecoApp(QMainWindow):
+    """
+    Fenêtre principale de l'application de reconnaissance faciale.
+    """
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Leomine - Reconnaissance Faciale Automatisée")
         self.resize(900, 700)
         
-        # Initialize face recognizer manager with default paths
+        # Initialisation du gestionnaire avec les chemins par défaut
         self.base_dir = os.getcwd()
         self.manager = FaceRecognizerManager(
             model_dir=os.path.join(self.base_dir, "models_onnx"),
@@ -65,26 +68,24 @@ class FaceRecoApp(QMainWindow):
         self.apply_styles()
 
     def init_ui(self):
-        """Builds and initializes the graphical user interface."""
+        """Construit et initialise l'interface utilisateur graphique."""
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
-        # --- SECTION 1: CONFIGURATION ---
+        # --- SECTION 1 : CONFIGURATION ---
         config_group = QGroupBox("Configuration")
-        # config_group.setStyleSheet("color: green;") 
         config_layout = QVBoxLayout()
 
-        # Known Faces Directory (Source for training)
+        # Répertoire des Visages Connus (Source pour l'apprentissage)
         self.path_known = self.create_file_input("Dossier des Visages Connus :", "known_faces")
         config_layout.addLayout(self.path_known['layout'])
-        
 
-        # Unknown Faces Directory (Target for sorting)
+        # Répertoire des Visages Inconnus (Cible pour le tri)
         self.path_unknown = self.create_file_input("Dossier à Trier :", "unknown_faces")
         config_layout.addLayout(self.path_unknown['layout'])
 
-        # Similarity Threshold
+        # Seuil de Similarité
         threshold_layout = QHBoxLayout()
         threshold_label = QLabel("Seuil de Similarité (0.1 - 0.9) :")
         threshold_label.setStyleSheet("color: black;") 
@@ -92,7 +93,7 @@ class FaceRecoApp(QMainWindow):
         self.threshold_spin.setRange(0.1, 0.9)
         self.threshold_spin.setSingleStep(0.05)
         self.threshold_spin.setValue(0.4)
-        self.threshold_spin.setToolTip("Plus bas = Plus strict. Plus haut = Plus tolérant.")
+        self.threshold_spin.setToolTip("Plus bas = Plus strict (Moins de faux positifs). Plus haut = Plus tolérant.")
         
         self.threshold_spin.valueChanged.connect(self.update_threshold)
         
@@ -104,11 +105,9 @@ class FaceRecoApp(QMainWindow):
         config_group.setLayout(config_layout)
         main_layout.addWidget(config_group)
 
-        # --- SECTION 2: ACTIONS ---
+        # --- SECTION 2 : ACTIONS ---
         actions_group = QGroupBox("Actions")
-        # actions_group.setStyleSheet("color: black;") 
         actions_layout = QHBoxLayout()
-
 
         self.btn_check_models = QPushButton("1. Vérifier Modèles")
         self.btn_check_models.clicked.connect(self.run_check_models)
@@ -119,7 +118,7 @@ class FaceRecoApp(QMainWindow):
         self.btn_process = QPushButton("3. Lancer le Tri")
         self.btn_process.clicked.connect(self.run_processing)
 
-        # Button styling
+        # Style spécifique pour le bouton de lancement
         self.btn_process.setStyleSheet("background-color: #2ecc71; color: white; font-weight: bold;")
         
         actions_layout.addWidget(self.btn_check_models)
@@ -129,15 +128,15 @@ class FaceRecoApp(QMainWindow):
         actions_group.setLayout(actions_layout)
         main_layout.addWidget(actions_group)
 
-        # --- SECTION 3: LOGS AND PROGRESS ---
+        # --- SECTION 3 : LOGS ET PROGRESSION ---
         log_group = QGroupBox("Journal d'activité")
         log_layout = QVBoxLayout()
 
         self.log_area = QTextEdit()
-        self.log_area.setReadOnly(True) # Le style est défini dans apply_styles
+        self.log_area.setReadOnly(True)
         
         self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 0) # Indeterminate mode by default
+        self.progress_bar.setRange(0, 0) # Mode indéterminé par défaut
         self.progress_bar.setTextVisible(False)
         self.progress_bar.hide()
 
@@ -146,11 +145,11 @@ class FaceRecoApp(QMainWindow):
         log_group.setLayout(log_layout)
         main_layout.addWidget(log_group)
 
-        # Initialize log
+        # Message d'initialisation
         self.log_message("Interface prête. Veuillez vérifier les modèles avant de commencer.")
 
     def create_file_input(self, label_text, default_path):
-        """Creates a file selection widget row."""
+        """Crée une rangée de widgets pour la sélection de fichiers."""
         layout = QHBoxLayout()
         label = QLabel(label_text)
         label.setStyleSheet("color: black;")
@@ -169,24 +168,24 @@ class FaceRecoApp(QMainWindow):
         return {'layout': layout, 'input': line_edit}
 
     def browse_folder(self, line_edit_widget):
-        """Opens a dialog to select a directory."""
+        """Ouvre une boîte de dialogue pour sélectionner un répertoire."""
         folder = QFileDialog.getExistingDirectory(self, "Choisir un dossier", line_edit_widget.text())
         if folder:
             line_edit_widget.setText(folder)
 
     def log_message(self, message):
-        """Appends a message to the log area and scrolls to bottom."""
+        """Ajoute un message à la zone de texte et fait défiler vers le bas."""
         self.log_area.append(f"> {message}")
         sb = self.log_area.verticalScrollBar()
         sb.setValue(sb.maximum())
 
     def update_threshold(self, value):
-        """Updates the threshold in the manager."""
+        """Met à jour le seuil dans le gestionnaire."""
         self.manager.threshold = value
         self.log_message(f"Seuil mis à jour : {value:.2f}")
 
     def toggle_buttons(self, enable):
-        """Enables or disables action buttons during processing."""
+        """Active ou désactive les boutons d'action pendant le traitement."""
         self.btn_check_models.setEnabled(enable)
         self.btn_train.setEnabled(enable)
         self.btn_process.setEnabled(enable)
@@ -196,10 +195,10 @@ class FaceRecoApp(QMainWindow):
         else:
             self.progress_bar.hide()
 
-    # --- Thread Management ---
+    # --- Gestion des Threads ---
 
     def start_worker(self, func, *args):
-        """Start a worker thread."""
+        """Démarre un thread de travail (Worker)."""
         if self.worker is not None and self.worker.isRunning():
             self.log_message("Une tâche est déjà en cours...")
             return
@@ -211,7 +210,7 @@ class FaceRecoApp(QMainWindow):
         self.worker.start()
 
     def run_check_models(self):
-        self.log_message("--- Démarrage vérification modèles ---")
+        self.log_message("--- Démarrage de la vérification des modèles ---")
         self.start_worker(self.manager.check_and_download_models)
 
     def run_training(self):
@@ -220,24 +219,24 @@ class FaceRecoApp(QMainWindow):
             QMessageBox.warning(self, "Erreur", "Le dossier des visages connus n'existe pas.")
             return
             
-        self.log_message(f"--- Démarrage apprentissage sur : {directory} ---")
+        self.log_message(f"--- Démarrage de l'apprentissage sur : {directory} ---")
         self.start_worker(self.manager.train_faces, directory)
 
     def run_processing(self):
-        # Ensure models are loaded
+        # S'assurer que les modèles sont chargés
         if self.manager.detector is None:
             loaded = self.manager.load_models()
             if not loaded:
                 self.log_message("Erreur : Impossible de charger les modèles.")
                 return
 
-        # Ensure encodings are loaded
+        # S'assurer que les encodages (signatures) sont chargés
         if not self.manager.known_features:
             success, count = self.manager.load_encodings()
             if success:
-                self.log_message(f"Mémoire chargée automatiquement : {count} visages.")
+                self.log_message(f"Base de données chargée automatiquement : {count} visages.")
             else:
-                self.log_message("ATTENTION : Aucune mémoire de visage chargée. Veuillez faire l'apprentissage d'abord.")
+                self.log_message("ATTENTION : Aucune signature de visage chargée. Veuillez lancer l'apprentissage d'abord.")
                 return
 
         directory = self.path_unknown['input'].text()
@@ -249,8 +248,7 @@ class FaceRecoApp(QMainWindow):
         self.start_worker(self.manager.process_directory, directory)
 
     def apply_styles(self):
-        """Applies global CSS styling."""
-        # Les couleurs de texte par défaut seront noires sur fond blanc, sauf pour les boutons et tooltips
+        """Applique les styles CSS globaux."""
         self.setStyleSheet("""
             QMainWindow { background-color: white; color: black; }
             QGroupBox { font-weight: bold; border: 1px solid #ccc; margin-top: 10px; padding-top: 15px; background-color: white; color: black; }
@@ -259,14 +257,14 @@ class FaceRecoApp(QMainWindow):
             QPushButton:hover { background-color: #2980b9; }
             QPushButton:disabled { background-color: #bdc3c7; }
             QLineEdit { padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
-            QTextEdit { background-color: white; color: black; font-family: Consolas; }
-            QToolTip { color: white; background-color: #333; border: 1px solid #333; } /* Garde le tooltip sombre pour une meilleure lisibilité */
+            QTextEdit { background-color: white; color: black; font-family: Consolas, 'Courier New'; }
+            QToolTip { color: white; background-color: #333; border: 1px solid #333; }
         """)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     
-    # Improved native look
+    # Utilisation du style "Fusion" pour un look moderne et uniforme
     app.setStyle(QStyleFactory.create("Fusion"))
     
     window = FaceRecoApp()

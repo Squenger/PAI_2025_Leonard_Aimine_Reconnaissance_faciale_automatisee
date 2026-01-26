@@ -6,13 +6,19 @@ import pickle
 import shutil
 
 class FaceRecognizerManager:
+    """
+    Gère la détection et la reconnaissance faciale via les modèles ONNX d'OpenCV Zoo.
+    Cette classe permet l'entraînement (encodage) et l'identification automatique 
+    d'images dans un répertoire donné.
+    """
+
     def __init__(self, model_dir="models_onnx", encoding_file="visages_connus.pkl", threshold=0.4):
         """
-        Initializes the face recognition manager.
+        Initialise le gestionnaire de reconnaissance faciale.
         
-        :param model_dir: Directory for ONNX models.
-        :param encoding_file: Path to the pickle file storing known face encodings.
-        :param threshold: Cosine similarity threshold for matching.
+        :param model_dir: Répertoire de stockage des modèles ONNX.
+        :param encoding_file: Chemin du fichier pickle stockant les signatures faciales.
+        :param threshold: Seuil de similarité cosinus pour la validation d'une correspondance.
         """
         self.model_dir = model_dir
         self.encoding_file = encoding_file
@@ -24,7 +30,7 @@ class FaceRecognizerManager:
         self.known_features = []
         self.known_names = []
         
-        # OpenCV Zoo model URLs
+        # URLs des modèles provenant d'OpenCV Zoo
         self.models_files = {
             "face_detection_yunet_2023mar.onnx": "https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx?raw=true",
             "face_recognition_sface_2021dec.onnx": "https://github.com/opencv/opencv_zoo/blob/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx?raw=true"
@@ -32,13 +38,15 @@ class FaceRecognizerManager:
 
     def check_and_download_models(self, progress_callback=None):
         """
-        Verifies and downloads required ONNX models if missing.
-        :param progress_callback: Optional callback for status updates.
+        Vérifie la présence des modèles ONNX et les télécharge si nécessaire.
+        
+        :param progress_callback: Fonction de rappel optionnelle pour le suivi de l'état.
+        :return: bool: True si les modèles sont prêts, False en cas d'erreur.
         """
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
 
-        if progress_callback: progress_callback("Verification des modèles...")
+        if progress_callback: progress_callback("Vérification des modèles...")
 
         for filename, url in self.models_files.items():
             filepath = os.path.join(self.model_dir, filename)
@@ -50,32 +58,42 @@ class FaceRecognizerManager:
                     if progress_callback: progress_callback(f"Erreur de téléchargement {filename}: {e}")
                     return False
         
-        if progress_callback: progress_callback("Tous les modèles sont prêts.")
+        if progress_callback: progress_callback("Tous les modèles sont opérationnels.")
         return True
 
     def load_models(self):
-        """Loads face detection (YuNet) and recognition (SFace) models."""
+        """
+        Initialise les instances de détection (YuNet) et de reconnaissance (SFace).
+        
+        :return: bool: True si le chargement réussit.
+        """
         try:
+            # Création du détecteur de visages YuNet
             self.detector = cv2.FaceDetectorYN.create(
                 model=os.path.join(self.model_dir, "face_detection_yunet_2023mar.onnx"),
                 config="",
-                input_size=(320, 320), # Adjusted dynamically during processing
+                input_size=(320, 320), # Ajusté dynamiquement lors du traitement
                 score_threshold=0.8,
                 nms_threshold=0.3,
                 top_k=5000
             )
             
+            # Création du reconnaisseur SFace
             self.recognizer = cv2.FaceRecognizerSF.create(
                 model=os.path.join(self.model_dir, "face_recognition_sface_2021dec.onnx"),
                 config=""
             )
             return True
         except Exception as e:
-            print(f"Erreur lors du chargement des modèles : {e}")
+            print(f"Erreur lors de l'initialisation des modèles : {e}")
             return False
 
     def load_encodings(self):
-        """Loads known face encodings from storage."""
+        """
+        Charge les signatures faciales connues depuis le fichier de stockage.
+        
+        :return: (bool, int): Statut du chargement et nombre de visages chargés.
+        """
         if os.path.exists(self.encoding_file):
             try:
                 with open(self.encoding_file, 'rb') as f:
@@ -87,7 +105,10 @@ class FaceRecognizerManager:
 
     def train_faces(self, known_dir, progress_callback=None):
         """
-        Scans the known faces directory and generates encodings.
+        Parcourt le répertoire des visages connus pour générer les signatures (encodage).
+        
+        :param known_dir: Répertoire contenant des sous-dossiers nommés par personne.
+        :param progress_callback: Fonction de rappel pour le suivi de la progression.
         """
         if not self.detector or not self.recognizer:
             if not self.load_models():
@@ -97,7 +118,7 @@ class FaceRecognizerManager:
         self.known_names = []
 
         if not os.path.exists(known_dir):
-            if progress_callback: progress_callback(f"Dossier {known_dir} non trouvé.")
+            if progress_callback: progress_callback(f"Erreur : Le dossier {known_dir} est introuvable.")
             return False
 
         people_dirs = [d for d in os.listdir(known_dir) if os.path.isdir(os.path.join(known_dir, d))]
@@ -105,7 +126,7 @@ class FaceRecognizerManager:
 
         for idx, name in enumerate(people_dirs):
             dir_path = os.path.join(known_dir, name)
-            if progress_callback: progress_callback(f"Entraînement sur: {name} ({idx+1}/{total_people})")
+            if progress_callback: progress_callback(f"Analyse de : {name} ({idx+1}/{total_people})")
             
             for filename in os.listdir(dir_path):
                 if not filename.lower().endswith(('.jpg', '.jpeg', '.png')):
@@ -115,20 +136,20 @@ class FaceRecognizerManager:
                 img = cv2.imread(filepath)
                 if img is None: continue
 
-                # Detect faces
+                # Détection faciale
                 h, w, _ = img.shape
                 self.detector.setInputSize((w, h))
                 _, faces = self.detector.detect(img)
                 
                 if faces is not None and len(faces) > 0:
-                    # Align and extract features
+                    # Alignement et extraction des caractéristiques (features)
                     face_align = self.recognizer.alignCrop(img, faces[0])
                     face_feature = self.recognizer.feature(face_align)
                     
                     self.known_features.append(face_feature)
                     self.known_names.append(name)
         
-        # Persist data
+        # Persistance des données
         save_dir = os.path.dirname(self.encoding_file)
         if save_dir and not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -136,19 +157,22 @@ class FaceRecognizerManager:
         with open(self.encoding_file, 'wb') as f:
             pickle.dump((self.known_features, self.known_names), f)
             
-        if progress_callback: progress_callback(f"Terminé. {len(self.known_features)} visages sauvegardés.")
+        if progress_callback: progress_callback(f"Entraînement terminé. {len(self.known_features)} signatures sauvegardées.")
         return True
 
     def process_directory(self, unknown_dir, progress_callback=None):
         """
-        Processes images in the target directory, identifying and renaming files.
+        Traite les images d'un répertoire cible, identifie les personnes et renomme les fichiers.
+        
+        :param unknown_dir: Répertoire contenant les images à identifier.
+        :param progress_callback: Fonction de rappel pour le suivi de la progression.
         """
         if not self.known_features:
-            if progress_callback: progress_callback("Erreur: Aucun visage connu chargé. Veuillez entraîner d'abord.")
+            if progress_callback: progress_callback("Erreur : Aucune signature chargée. Lancez l'entraînement d'abord.")
             return
 
         if not os.path.exists(unknown_dir):
-            if progress_callback: progress_callback(f"Dossier non trouvé: {unknown_dir}")
+            if progress_callback: progress_callback(f"Dossier introuvable : {unknown_dir}")
             return
 
         files = [f for f in os.listdir(unknown_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
@@ -158,13 +182,13 @@ class FaceRecognizerManager:
         for idx, filename in enumerate(files):
             filepath = os.path.join(unknown_dir, filename)
             
-            # Progress update
             if progress_callback and idx % 5 == 0: 
-                progress_callback(f"Traitement :  {idx+1}/{total_files}...")
+                progress_callback(f"Traitement en cours : {idx+1}/{total_files}...")
 
             img = cv2.imread(filepath)
             if img is None: continue
 
+            # Mise à jour de la taille d'entrée pour le détecteur
             h, w, _ = img.shape
             self.detector.setInputSize((w, h))
             _, faces = self.detector.detect(img)
@@ -181,7 +205,7 @@ class FaceRecognizerManager:
                 best_score = 0.0
                 best_name = "Inconnu"
                 
-                # Match against known features
+                # Comparaison avec les signatures connues
                 for i, known_feat in enumerate(self.known_features):
                     score = self.recognizer.match(known_feat, unknown_feat, cv2.FaceRecognizerSF_FR_COSINE)
                     
@@ -193,17 +217,24 @@ class FaceRecognizerManager:
                 if best_name != "Inconnu":
                     found_names_in_image.add(best_name)
 
-            # Rename file based on findings
+            # Renommage du fichier si des visages sont identifiés
             if found_names_in_image:
                 new_name = self._rename_file(unknown_dir, filename, found_names_in_image)
                 if new_name:
                     renamed_count += 1
-                    if progress_callback: progress_callback(f"Renommée: {filename} -> {new_name}")
+                    if progress_callback: progress_callback(f"Renommé : {filename} -> {new_name}")
 
-        if progress_callback: progress_callback(f"Terminé. {renamed_count} images renommées sur {total_files}.")
+        if progress_callback: progress_callback(f"Traitement terminé. {renamed_count} images identifiées sur {total_files}.")
 
     def _rename_file(self, directory, filename, found_names):
-        """Handles file renaming with duplicate prevention logic."""
+        """
+        Gère la logique de renommage des fichiers avec prévention des doublons.
+        
+        :param directory: Chemin du répertoire.
+        :param filename: Nom d'origine du fichier.
+        :param found_names: Ensemble des noms identifiés sur l'image.
+        :return: str: Nouveau nom du fichier ou None en cas d'erreur.
+        """
         sorted_names = sorted(list(found_names))
         new_base_name = "_".join(sorted_names)
         
@@ -212,7 +243,7 @@ class FaceRecognizerManager:
         filepath = os.path.join(directory, filename)
         new_filepath = os.path.join(directory, new_filename)
         
-        # Resolve collisions (e.g., file_2.jpg)
+        # Gestion des collisions (ex: personne_2.jpg)
         counter = 2
         final_new_filename = new_filename
         final_new_filepath = new_filepath
@@ -229,28 +260,3 @@ class FaceRecognizerManager:
             except OSError:
                 return None
         return None
-
-# --- USAGE EXAMPLE (Headless) ---
-if __name__ == "__main__":
-    BASE_DIR = os.getcwd()
-    manager = FaceRecognizerManager(
-        model_dir=os.path.join(BASE_DIR, "models_onnx"),
-        encoding_file=os.path.join(BASE_DIR, "encodings_data", "visages.pkl"),
-        threshold=0.4
-    )
-
-    def simple_logger(msg):
-        print(f"[LOG] {msg}")
-
-    # 1. Check models
-    manager.check_and_download_models(simple_logger)
-    
-    # 2. Load models
-    manager.load_models()
-
-    # 3. Mode selection: Train or Load
-    # manager.train_faces("known_faces", simple_logger) 
-    manager.load_encodings()
-
-    # 4. Process
-    # manager.process_directory("unknown_faces/Darklight party", simple_logger)
