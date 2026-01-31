@@ -21,10 +21,8 @@ dependencies = [
 
 
 [project.urls]
-Homepage = "https://github.com/bosd/facial-recognition"
-Repository = "https://github.com/bosd/facial-recognition"
-Documentation = "https://facial-recognition.readthedocs.io"
-Changelog = "https://github.com/bosd/facial-recognition/releases"
+Homepage = "https://github.com/aiminemeddeb/Projet-PAI"
+Repository = "https://github.com/aiminemeddeb/Projet-PAI"
 
 [dependency-groups]
 dev = [
@@ -58,6 +56,7 @@ xdoctest = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+exclude = ["facial_recognition.scripts_without_interface*"]
 
 [tool.uv]
 package = true

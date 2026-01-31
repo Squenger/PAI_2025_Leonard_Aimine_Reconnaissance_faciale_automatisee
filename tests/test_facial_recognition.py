@@ -22,14 +22,14 @@ def test_manager_init(manager):
 @patch("urllib.request.urlretrieve")
 def test_check_and_download_models(mock_urlretrieve, mock_makedirs, mock_exists, manager):
     """Test checking and downloading models."""
-    # Scenario: models don't exist
+    # models don't exist
     mock_exists.return_value = False
     
     result = manager.check_and_download_models()
     
     assert result is True
     assert mock_makedirs.called
-    assert mock_urlretrieve.call_count == 2 # Two models to download
+    assert mock_urlretrieve.call_count == 2 
 
 @patch("cv2.FaceDetectorYN.create")
 @patch("cv2.FaceRecognizerSF.create")
@@ -67,26 +67,25 @@ def test_load_encodings_not_found(manager):
 
 def test_rename_file_logic(manager):
     """Test the file renaming logic without actual OS calls."""
-    # Mocking os.path.exists for the loop inside _rename_file
     with patch("os.path.exists") as mock_exists:
         with patch("os.rename") as mock_rename:
-            # Case 1: Simple rename
+            # Simple rename
             mock_exists.side_effect = [False] # new_filepath doesn't exist
-            result = manager._rename_file("/tmp", "image.jpg", {"Alice"})
-            assert result == "Alice.jpg"
-            mock_rename.assert_called_with("/tmp/image.jpg", "/tmp/Alice.jpg")
+            result = manager._rename_file("/tmp", "image.jpg", {"Aimine"})
+            assert result == "Aimine.jpg"
+            mock_rename.assert_called_with("/tmp/image.jpg", "/tmp/Aimine.jpg")
             
-            # Case 2: Rename with multiple people
+            # Rename with multiple people
             mock_exists.side_effect = [False]
-            result = manager._rename_file("/tmp", "image.jpg", {"Alice", "Bob"})
-            assert result == "Alice_Bob.jpg"
+            result = manager._rename_file("/tmp", "image.jpg", {"Aimine", "Bob"})
+            assert result == "Aimine_Bob.jpg"
             
-            # Case 3: Collision handling
-            # First try Alice.jpg exists, Alice_2.jpg doesn't
+            # Collision handling
+            # First try Aimine.jpg exists, Aimine_2.jpg doesn't
             mock_exists.side_effect = [True, False]
-            result = manager._rename_file("/tmp", "image.jpg", {"Alice"})
-            assert result == "Alice_2.jpg"
-            mock_rename.assert_called_with("/tmp/image.jpg", "/tmp/Alice_2.jpg")
+            result = manager._rename_file("/tmp", "image.jpg", {"Aimine"})
+            assert result == "Aimine_2.jpg"
+            mock_rename.assert_called_with("/tmp/image.jpg", "/tmp/Aimine_2.jpg")
 
 @patch("os.path.exists")
 @patch("os.path.isdir")
@@ -99,8 +98,8 @@ def test_train_faces(mock_imread, mock_listdir, mock_isdir, mock_exists, manager
     
     mock_exists.return_value = True
     mock_isdir.return_value = True # Treat "Alice" as a directory
-    # Structure: known_dir/Alice/img1.jpg
-    mock_listdir.side_effect = [["Alice"], ["img1.jpg"]]
+    # Structure: known_dir/Aimine/Léo.jpg
+    mock_listdir.side_effect = [["Aimine"], ["Léo.jpg"]]
     
     mock_img = MagicMock()
     mock_img.shape = (100, 100, 3)
@@ -116,7 +115,7 @@ def test_train_faces(mock_imread, mock_listdir, mock_isdir, mock_exists, manager
             result = manager.train_faces("/tmp/known")
             
             assert result is True
-            assert manager.known_names == ["Alice"]
+            assert manager.known_names == ["Aimine"]
             assert manager.known_features == ["feature_vector"]
             assert mock_pickle_dump.called
 
@@ -126,7 +125,7 @@ def test_train_faces(mock_imread, mock_listdir, mock_isdir, mock_exists, manager
 def test_process_directory(mock_imread, mock_listdir, mock_exists, manager):
     """Test processing a directory of unknown faces."""
     manager.known_features = ["known_feat"]
-    manager.known_names = ["Alice"]
+    manager.known_names = ["Aimine"]
     manager.detector = MagicMock()
     manager.recognizer = MagicMock()
     
@@ -147,10 +146,10 @@ def test_process_directory(mock_imread, mock_listdir, mock_exists, manager):
     manager.threshold = 0.4
     
     with patch.object(manager, "_rename_file") as mock_rename:
-        mock_rename.return_value = "Alice.jpg"
+        mock_rename.return_value = "Aimine.jpg"
         manager.process_directory("/tmp/unknown")
         
         assert mock_rename.called
         # Verify it passed the correct set of found names
         args, _ = mock_rename.call_args
-        assert args[2] == {"Alice"}
+        assert args[2] == {"Aimine"}
