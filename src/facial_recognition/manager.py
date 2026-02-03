@@ -34,6 +34,9 @@ class FaceRecognizerManager:
         self.known_features = []
         self.known_names = []
         
+        # Pour stocker les résultats du traitement (chemin, noms reconnus)
+        self.processed_images = []
+        
         # URLs des modèles provenant d'OpenCV Zoo
         self.models_files = {
             "face_detection_yunet_2023mar.onnx": "https://github.com/opencv/opencv_zoo/blob/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx?raw=true",
@@ -179,6 +182,9 @@ class FaceRecognizerManager:
             if progress_callback: progress_callback(f"Dossier introuvable : {unknown_dir}")
             return
 
+        # Réinitialiser la liste des images traitées
+        self.processed_images = []
+
         files = [f for f in os.listdir(unknown_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
         total_files = len(files)
         renamed_count = 0
@@ -222,11 +228,17 @@ class FaceRecognizerManager:
                     found_names_in_image.add(best_name)
 
             # Renommage du fichier si des visages sont identifiés
+            new_filepath = filepath  # Par défaut, le fichier n'est pas renommé
             if found_names_in_image:
                 new_name = self._rename_file(unknown_dir, filename, found_names_in_image)
                 if new_name:
                     renamed_count += 1
+                    new_filepath = os.path.join(unknown_dir, new_name)
                     if progress_callback: progress_callback(f"Renommé : {filename} -> {new_name}")
+            
+            # Stocker le résultat (chemin final, noms reconnus)
+            sorted_names = sorted(list(found_names_in_image)) if found_names_in_image else ["Inconnu"]
+            self.processed_images.append((new_filepath, sorted_names))
 
         if progress_callback: progress_callback(f"Traitement terminé. {renamed_count} images identifiées sur {total_files}.")
 

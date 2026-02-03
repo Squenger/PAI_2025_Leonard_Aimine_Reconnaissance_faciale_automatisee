@@ -37,8 +37,15 @@ Le code source de l'application.
 - **`facial_recognition/`** : Le package Python principal.
     - **`__init__.py`** : Marque le dossier comme un package Python.
     - **`__main__.py`** : Point d'entrée pour lancer l'application via `python -m facial_recognition`.
-    - **`interface.py`** : Contient le code de l'interface graphique (PyQt6).
-    - **`manager.py`** : Logique métier principale (gestion des modèles, chargement des encodages, logique de renommage).
+    - **`interface.py`** : Contient le code de l'interface graphique (PyQt6) :
+        - `FaceRecoApp` : Fenêtre principale avec 4 boutons d'action (Vérifier Modèles, Apprendre Visages, Lancer le Tri, Voir les Résultats)
+        - `ImageViewerWindow` : Fenêtre de visualisation des images traitées avec navigation
+        - `WorkerThread` : Gestion des tâches en arrière-plan
+    - **`manager.py`** : Logique métier principale :
+        - Gestion des modèles ONNX (YuNet, SFace)
+        - Chargement et sauvegarde des encodages
+        - Traitement et renommage des images
+        - Stockage des résultats dans `processed_images` pour visualisation
     - **`py.typed`** : Fichier vide (marker) indiquant que le package fournit des annotations de type (compatible PEP 561).
     - **`extraction/`** : Dossier à ignorer contenant l'extraction des visages à partir d'un trombinoscope.
     - **`models_onnx/`** : Dossier contenant les modèles de reconnaissance faciale (SFace, YuNet).

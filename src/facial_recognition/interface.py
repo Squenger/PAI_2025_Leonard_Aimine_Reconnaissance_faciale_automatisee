@@ -15,15 +15,143 @@ if sys.platform == 'darwin':
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QLineEdit, QFileDialog, QTextEdit,
-    QProgressBar, QGroupBox, QStyleFactory, QDoubleSpinBox, QMessageBox
+    QProgressBar, QGroupBox, QStyleFactory, QDoubleSpinBox, QMessageBox,
+    QDialog
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QPixmap
 
 # Importation du gestionnaire de reconnaissance
 try:
     from .manager import FaceRecognizerManager
 except ImportError:
     from manager import FaceRecognizerManager
+
+class ImageViewerWindow(QDialog):
+    """
+    Fenêtre de visualisation des images traitées avec navigation.
+    """
+    def __init__(self, processed_images, parent=None):
+        """
+        :param processed_images: Liste de tuples (filepath, [noms reconnus])
+        """
+        super().__init__(parent)
+        self.processed_images = processed_images
+        self.current_index = 0
+        
+        self.setWindowTitle("Visualisation des Résultats")
+        self.resize(1000, 800)
+        
+        self.init_ui()
+        self.load_image()
+    
+    def init_ui(self):
+        """Construit l'interface de visualisation."""
+        layout = QVBoxLayout(self)
+        
+        # Titre avec les personnes reconnues
+        self.title_label = QLabel()
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setStyleSheet(
+            "font-size: 18px; font-weight: bold; color: #5cd6ca; padding: 10px;"
+        )
+        layout.addWidget(self.title_label)
+        
+        # Label pour afficher l'image
+        self.image_label = QLabel()
+        self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_label.setStyleSheet("background-color: #ecf0f1; border: 2px solid #bdc3c7;")
+        self.image_label.setMinimumSize(800, 600)
+        self.image_label.setScaledContents(False)  # Pour garder le ratio
+        layout.addWidget(self.image_label, 1)  # stretch=1 pour prendre l'espace disponible
+        
+        # Compteur d'images
+        self.counter_label = QLabel()
+        self.counter_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.counter_label.setStyleSheet("color: #7f8c8d; font-size: 12px; padding: 5px;")
+        layout.addWidget(self.counter_label)
+        
+        # Boutons de navigation
+        nav_layout = QHBoxLayout()
+        
+        self.btn_prev = QPushButton("⬅ Précédent")
+        self.btn_prev.clicked.connect(self.show_previous)
+        
+        self.btn_next = QPushButton("Suivant ➡")
+        self.btn_next.clicked.connect(self.show_next)
+        
+        self.btn_close = QPushButton("Fermer")
+        self.btn_close.clicked.connect(self.close)
+        self.btn_close.setStyleSheet("background-color: #e74c3c; color: white;")
+        
+        nav_layout.addWidget(self.btn_prev)
+        nav_layout.addStretch()
+        nav_layout.addWidget(self.btn_close)
+        nav_layout.addStretch()
+        nav_layout.addWidget(self.btn_next)
+        
+        layout.addLayout(nav_layout)
+        
+        # Appliquer les styles aux boutons de navigation
+        self.btn_prev.setStyleSheet("background-color: #3498db; color: white; padding: 10px;")
+        self.btn_next.setStyleSheet("background-color: #3498db; color: white; padding: 10px;")
+    
+    def load_image(self):
+        """Charge et affiche l'image courante."""
+        if not self.processed_images:
+            self.title_label.setText("Aucune image à afficher")
+            return
+        
+        filepath, recognized_names = self.processed_images[self.current_index]
+        
+        # Afficher le titre avec les noms reconnus
+        if recognized_names and recognized_names[0] != "Inconnu":
+            names_str = ", ".join(recognized_names)
+            self.title_label.setText(f"Personnes reconnues : {names_str}")
+        else:
+            self.title_label.setText("Aucune personne reconnue")
+        
+        # Charger et afficher l'image
+        if os.path.exists(filepath):
+            pixmap = QPixmap(filepath)
+            if pixmap.isNull():
+                self.image_label.setText("Impossible de charger l'image")
+            else:
+                # Redimensionner l'image pour s'adapter au label tout en gardant le ratio
+                scaled_pixmap = pixmap.scaled(
+                    self.image_label.size(),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+                self.image_label.setPixmap(scaled_pixmap)
+        else:
+            self.image_label.setText("Fichier introuvable")
+        
+        # Mettre à jour le compteur
+        self.counter_label.setText(
+            f"Image {self.current_index + 1} sur {len(self.processed_images)}"
+        )
+        
+        # Activer/désactiver les boutons selon la position
+        self.btn_prev.setEnabled(self.current_index > 0)
+        self.btn_next.setEnabled(self.current_index < len(self.processed_images) - 1)
+    
+    def show_previous(self):
+        """Affiche l'image précédente."""
+        if self.current_index > 0:
+            self.current_index -= 1
+            self.load_image()
+    
+    def show_next(self):
+        """Affiche l'image suivante."""
+        if self.current_index < len(self.processed_images) - 1:
+            self.current_index += 1
+            self.load_image()
+    
+    def resizeEvent(self, event):
+        """Redimensionne l'image quand la fenêtre est redimensionnée."""
+        super().resizeEvent(event)
+        self.load_image()
 
 class WorkerThread(QThread):
     """
@@ -123,13 +251,19 @@ class FaceRecoApp(QMainWindow):
         
         self.btn_process = QPushButton("3. Lancer le Tri")
         self.btn_process.clicked.connect(self.run_processing)
+        
+        self.btn_view_results = QPushButton("4. Voir les Résultats")
+        self.btn_view_results.clicked.connect(self.show_results)
+        self.btn_view_results.setEnabled(False)  # Désactivé par défaut
 
-        # Style spécifique pour le bouton de lancement
+        # Style spécifique pour les boutons
         self.btn_process.setStyleSheet("background-color: #2ecc71; color: white; font-weight: bold;")
+        self.btn_view_results.setStyleSheet("background-color: #9b59b6; color: white; font-weight: bold;")
         
         actions_layout.addWidget(self.btn_check_models)
         actions_layout.addWidget(self.btn_train)
         actions_layout.addWidget(self.btn_process)
+        actions_layout.addWidget(self.btn_view_results)
         
         actions_group.setLayout(actions_layout)
         main_layout.addWidget(actions_group)
@@ -195,6 +329,7 @@ class FaceRecoApp(QMainWindow):
         self.btn_check_models.setEnabled(enable)
         self.btn_train.setEnabled(enable)
         self.btn_process.setEnabled(enable)
+        # Note: btn_view_results reste géré séparément
         
         if not enable:
             self.progress_bar.show()
@@ -251,8 +386,38 @@ class FaceRecoApp(QMainWindow):
             return
 
         self.log_message(f"--- Démarrage du tri sur : {directory} ---")
-        self.start_worker(self.manager.process_directory, directory)
+        # Créer un worker avec callback pour activer le bouton une fois terminé
+        if self.worker is not None and self.worker.isRunning():
+            self.log_message("Une tâche est déjà en cours...")
+            return
 
+        self.toggle_buttons(False)
+        self.worker = WorkerThread(self.manager.process_directory, directory)
+        self.worker.progress_signal.connect(self.log_message)
+        self.worker.finished_signal.connect(self.on_processing_finished)
+        self.worker.start()
+
+    def on_processing_finished(self):
+        """Appelé quand le traitement est terminé."""
+        self.toggle_buttons(True)
+        # Activer le bouton de visualisation si des images ont été traitées
+        if self.manager.processed_images:
+            self.btn_view_results.setEnabled(True)
+            self.log_message(f"{len(self.manager.processed_images)} images disponibles pour visualisation.")
+    
+    def show_results(self):
+        """Affiche la fenêtre de visualisation des résultats."""
+        if not self.manager.processed_images:
+            QMessageBox.information(
+                self,
+                "Aucun résultat",
+                "Aucune image n'a été traitée. Veuillez d'abord lancer le tri."
+            )
+            return
+        
+        viewer = ImageViewerWindow(self.manager.processed_images, self)
+        viewer.exec()
+    
     def apply_styles(self):
         """Applique les styles CSS globaux."""
         self.setStyleSheet("""

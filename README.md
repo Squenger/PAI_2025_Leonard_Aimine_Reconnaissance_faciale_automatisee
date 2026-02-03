@@ -6,6 +6,7 @@
 - **Reconnaissance Faciale** : Utilisation du modèle SFace pour l'identification.
 - **Interface Graphique** : Application PyQt6 pour une utilisation simplifiée.
 - **Automatisation** : Renommage automatique des images en fonction des personnes identifiées.
+- **Visualisation des Résultats** : Navigation et affichage des images traitées avec reconnaissance des personnes.
 
 ## Requirements
 
@@ -43,6 +44,17 @@ $ python -m facial_recognition
 ```
 
 You can also use the `Lancer_Interface.command` script to launch the application on macOS.
+
+### Workflow
+
+1. **Vérifier les Modèles** : Click "1. Vérifier Modèles" to download required models
+2. **Apprentissage** : Click "2. Apprendre Visages" to train on known faces
+3. **Traitement** : Click "3. Lancer le Tri" to process and rename unknown images
+4. **Visualisation** : Click "4. Voir les Résultats" to view processed images with:
+   - Large image display
+   - Recognized persons shown in the title
+   - Navigation between images using Previous/Next buttons
+   - Image counter (e.g., "Image 3 of 15")
 
 ## Tests
 
